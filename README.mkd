@@ -7,6 +7,7 @@ Scripts
 -------
 
 `longurl.js`: Expand shortened urls using the [longurl.org](http://longurl.org) service.
+`google-star.js`: Remove the annoying stars from google results.
 
 Requirements
 ------------
