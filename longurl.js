@@ -69,12 +69,12 @@
         "➨.ws": true, "➯.ws": true, "➹.ws": true, "➽.ws": true
     }
 
-    function getDomain(url) {
+    var getDomain = function (url) {
         var domain = url.match(/^http:\/\/(?:(?:[^@]+@)?(?:www\.)?(?:[^\.]+\.(notlong\.com|qlnk\.net|ni\.to|lu\.to|zzang\.kr)|([^\.]+\.[^\/]+)))/i);
         return domain && (domain[1] || domain[2]) || false;
     }
 
-    function replaceLink(link, info) {
+    var replaceLink = function (link, info) {
         if (SHORT_URL_LINK) {
             // FIXME? these links could probably be re-expanded
             var sup = document.createElement("sup");
