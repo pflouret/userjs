@@ -76,10 +76,9 @@
 
     var replaceLink = function (link, info) {
         if (SHORT_URL_LINK) {
-            // FIXME? these links could probably be re-expanded
             var sup = document.createElement("sup");
-            sup.innerHTML = ' <a href="'+link.href+'" title="original short url">o</a>';
-            link.parentNode.insertBefore(sup, l.nextSibling);
+            sup.innerHTML = ' <a href="'+link.href+'" class="__shorturl_unexpanded_link" title="original short url">o</a>';
+            link.parentNode.insertBefore(sup, link.nextSibling);
         }
 
         if (link.innerHTML == link.href) {
@@ -91,40 +90,60 @@
         link.href = info["long-url"];
     }
 
-    document.addEventListener("DOMContentLoaded",
-        function() {
-            var links = document.getElementsByTagName("a");
-            var cur_domain = getDomain(document.location.href);
+    var resolveLinks = function () {
+        var links = document.getElementsByTagName("a");
+        var cur_domain = getDomain(document.location.href);
 
-            if (opera.scriptStorage && opera.scriptStorage.length > 500) {
-                opera.scriptStorage.clear(); // nuke it every once in a while
-            }
+        if (opera.scriptStorage && opera.scriptStorage.length > 500) {
+            opera.scriptStorage.clear(); // nuke it every once in a while
+        }
 
-            for (var i=0; i < links.length; i++) {
-                var link = links[i];
-                var domain = getDomain(link.href);
-                if (link.href && domain != cur_domain && services[domain]) {
-                    if (opera.scriptStorage && opera.scriptStorage[link.href]) {
-                        try {
-                            replaceLink(link, JSON.parse(opera.scriptStorage[link.href]));
-                            continue;
-                        } catch(e) {};
-                    }
-
-                    var script = document.createElement("script");
-                    script.type = "text/javascript";
-                    script.src = "http://api.longurl.org/v2/expand?format=json&title=1&url="+escape(link.href)+"&callback=cb"+i;
-                    (function (l) {
-                        window['cb'+i] = function (r) {
-                            if (opera.scriptStorage) {
-                                opera.scriptStorage[l.href] = JSON.stringify(r);
-                            }
-                            replaceLink(l, r);
-                        }
-                    })(link);
-                    document.body.appendChild(script);
+        for (var i=0; i < links.length; i++) {
+            var link = links[i];
+            var domain = getDomain(link.href);
+            if (link.href && link.className.indexOf("__shorturl_unexpanded_link") == -1 && domain != cur_domain && services[domain]) {
+                if (opera.scriptStorage && opera.scriptStorage[link.href]) {
+                    try {
+                        replaceLink(link, JSON.parse(opera.scriptStorage[link.href]));
+                        continue;
+                    } catch(e) {};
                 }
+
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.src = "http://api.longurl.org/v2/expand?format=json&title=1&url="+escape(link.href)+"&callback=cb"+i;
+                (function (l) {
+                    window['cb'+i] = function (r) {
+                        if (opera.scriptStorage) {
+                            opera.scriptStorage[l.href] = JSON.stringify(r);
+                        }
+                        replaceLink(l, r);
+                    }
+                })(link);
+                document.body.appendChild(script);
             }
-        }, false);
+        }
+    }
+
+    var delayedResolveLinks = (function () {
+        var timeoutId = -1;
+        return function (e) {
+            if (!e.relatedNode || e.relatedNode.id != 'timeline') // the parent
+                return;
+            if (timeoutId != -1) {
+                clearTimeout(timeoutId);
+            }
+            timeoutId = setTimeout(function () { resolveLinks(); timeoutId = -1; }, 1000);
+        }
+    })();
+
+    document.addEventListener("DOMContentLoaded", function () {
+        resolveLinks();
+        if (location.hostname.indexOf("twitter.com") > -1) {
+            // FIXME: apparently this doesn't cover the nav links
+            document.getElementById("timeline").addEventListener("DOMNodeInserted", delayedResolveLinks, false);
+        }
+    }, false);
+
 })();
 
